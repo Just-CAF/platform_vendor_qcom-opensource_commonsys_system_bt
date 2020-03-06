@@ -2429,8 +2429,13 @@ static bool btif_av_state_started_handler(btif_sm_event_t event, void* p_data,
                             __func__, btif_av_cb[index].remote_started);
             //Flush and close media channel if this index is DUT started and streaming
             if (!btif_av_cb[index].remote_started) {
-              APPL_TRACE_WARNING("%s: index is DUT started, flush the stream", __func__);
-              btif_a2dp_source_set_tx_flush(true);
+              if (is_multicast_supported && (!enable_multicast) && btif_av_cb[index].dual_handoff) {
+                BTIF_TRACE_DEBUG("%s: the suspend is dual to dual_handoof for mcast", __func__);
+              } else {
+                BTIF_TRACE_DEBUG("%s: index is DUT started, flush the stream", __func__);
+                btif_a2dp_source_set_tx_flush(true);
+              }
+
             } else if (btif_av_is_playing_on_other_idx(index)) {
               //index is remote started, other index streaming
               APPL_TRACE_WARNING("%s: Not flushing as one link is already streaming", __func__);
@@ -2581,7 +2586,7 @@ static bool btif_av_state_started_handler(btif_sm_event_t event, void* p_data,
          * set remote suspend flag before suspending stream as in race conditions
          * when stream is suspended, but flag is things ge tossed up
          */
-        BTIF_TRACE_EVENT("%s: Clear before suspending", __func__);
+        BTIF_TRACE_DEBUG("%s: Clear before suspending", __func__);
         if ((btif_av_cb[index].flags & BTIF_AV_FLAG_LOCAL_SUSPEND_PENDING) == 0) {
           btif_av_cb[index].flags |= BTIF_AV_FLAG_REMOTE_SUSPEND;
           bta_av_sniff_enable(false, btif_av_cb[index].peer_bda);
@@ -2590,7 +2595,7 @@ static bool btif_av_state_started_handler(btif_sm_event_t event, void* p_data,
           if ((i != index) && btif_av_get_ongoing_multicast()) {
             multicast_disabled = true;
             btif_av_update_multicast_state(index);
-            BTIF_TRACE_EVENT("%s: Initiate suspend for other HS also", __func__);
+            BTIF_TRACE_DEBUG("%s: Initiate suspend for other HS also", __func__);
             btif_sm_dispatch(btif_av_cb[i].sm_handle,
                     BTIF_AV_SUSPEND_STREAM_REQ_EVT, NULL);
           }
@@ -2629,19 +2634,22 @@ static bool btif_av_state_started_handler(btif_sm_event_t event, void* p_data,
               btif_av_cb[index].flags & BTIF_AV_FLAG_LOCAL_SUSPEND_PENDING,
               btif_av_cb[index].reconfig_event);
 
-      if ((!enable_multicast)&& btif_av_cb[index].is_suspend_for_remote_start
-            && (btif_av_is_playing_on_other_idx(index)))
+      if (((!enable_multicast)&& btif_av_cb[index].is_suspend_for_remote_start
+            && (btif_av_is_playing_on_other_idx(index))) || ((!enable_multicast) && is_multicast_supported
+            && (btif_av_cb[index].dual_handoff)))
       {
-        BTIF_TRACE_IMP("%s Don't update audio state change to app for idx =%d", __func__, index);
+        BTIF_TRACE_DEBUG("%s Don't update audio state change to app for idx =%d", __func__, index);
         btif_av_cb[index].is_device_playing = false;
       } else {
         if (!((btif_av_cb[index].flags & BTIF_AV_FLAG_LOCAL_SUSPEND_PENDING)
                                           || (p_av->suspend.initiator == true)))
         {
+          BTIF_TRACE_DEBUG("%s update BTAV_AUDIO_STATE_REMOTE_SUSPEND to app for idx =%d", __func__, index);
           btif_report_audio_state(BTAV_AUDIO_STATE_REMOTE_SUSPEND, &(btif_av_cb[index].peer_bda));
         }
         else
         {
+          BTIF_TRACE_DEBUG("%s update BTAV_AUDIO_STATE_STOPPED to app for idx =%d", __func__, index);
           btif_report_audio_state(BTAV_AUDIO_STATE_STOPPED, &(btif_av_cb[index].peer_bda));
         }
       }
