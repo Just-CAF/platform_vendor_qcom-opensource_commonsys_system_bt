@@ -4511,9 +4511,11 @@ static bt_status_t codec_config_src(const RawAddress& bd_addr,
   } */
 #endif
 
-  if (btif_av_get_num_connected_devices() > 1) {
-    BTIF_TRACE_DEBUG("%s:more than one A2DP device connected, config change not allowed",__func__);
-    return BT_STATUS_FAIL;
+  if (enable_multicast) {
+    if (btif_av_get_num_connected_devices() > 1) {
+      BTIF_TRACE_DEBUG("%s:more than one A2DP device connected, config change not allowed",__func__);
+      return BT_STATUS_FAIL;
+    }
   }
 
   btif_av_codec_config_req_t codec_req;
