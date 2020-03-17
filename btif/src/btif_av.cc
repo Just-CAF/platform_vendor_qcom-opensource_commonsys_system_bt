@@ -4073,13 +4073,15 @@ static bt_status_t init_src(
         // already did btif_av_init()
         status = BT_STATUS_SUCCESS;
   else {
-    if (a2dp_multicast_state && !bt_split_a2dp_enabled)
+    if (a2dp_multicast_state && !bt_split_a2dp_enabled) {
       is_multicast_supported = true;
-    if (max_a2dp_connections > 1)
-      btif_max_av_clients = 2;
-    else
+      if (max_a2dp_connections > 1)
+        btif_max_av_clients = 2;
+    } else {
       btif_max_av_clients = max_a2dp_connections;
-    BTIF_TRACE_EVENT("%s() with max conn changed to = %d", __func__,
+    }
+
+    BTIF_TRACE_DEBUG("%s() with max conn changed to = %d", __func__,
                                 btif_max_av_clients);
     if (btif_av_is_split_a2dp_enabled()) {
       btif_a2dp_src_vsc.multi_vsc_support = false;
